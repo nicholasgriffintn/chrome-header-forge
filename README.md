@@ -59,6 +59,13 @@ Header Forge has no dependencies or build step. To test a local checkout:
 3. Select **Load unpacked** and choose this repository.
 4. Select the reload icon after making changes.
 
+The marketing website lives in `website`. Run its checks with:
+
+```sh
+pnpm --dir website install
+pnpm --dir website test
+```
+
 ## Licence
 
 MIT. See `LICENSE`.
