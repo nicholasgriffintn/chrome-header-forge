@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Header Forge</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div class="hero-primary">
+        <div class="brand">
+          <img class="brand-mark" src="icons/icon-48.png" alt="">
+          <div>
+            <h1>Header Forge</h1>
+            <p>Set local overrides for HTTP requests</p>
+          </div>
+        </div>
+
+        <label class="global-control" title="Enable all rules">
+          <input id="global-enabled" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span id="global-status" class="global-status">ACTIVE</span>
+        </label>
+      </div>
+
+      <div class="rule-summary" aria-live="polite">
+        <span class="live-rule"><span class="status-dot"></span><span id="active-rule-count">0 rules active</span></span>
+        <span class="summary-divider" aria-hidden="true"></span>
+        <span id="active-url-filter" class="active-filter">*</span>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <section class="profile-section">
+        <label class="control-label" for="profile-select">Profile</label>
+        <div class="profile-controls">
+          <select id="profile-select" aria-label="Active profile"></select>
+          <button id="add-profile" type="button">New</button>
+          <button id="rename-profile" type="button">Rename</button>
+          <button id="delete-profile" class="danger" type="button">Delete</button>
+        </div>
+      </section>
+
+      <label class="filter-field" for="url-filter">
+        <span class="field-heading">
+          <span class="control-label">URL filter</span>
+          <small>Chrome DNR filter syntax</small>
+        </span>
+        <span class="filter-input">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m16.25 16.25 4 4"></path>
+          </svg>
+          <input id="url-filter" type="text" placeholder="* or ||example.com/">
+        </span>
+      </label>
+
+      <div class="workspace-divider"></div>
+
+      <section class="header-section">
+        <div class="section-heading">
+          <div class="section-title">
+            <h2>Request Headers</h2>
+            <span id="request-count" class="rule-count" hidden></span>
+          </div>
+          <button class="add-button" data-add="requestHeaders" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 5v14M5 12h14"></path>
+            </svg>
+            Add
+          </button>
+          </div>
+          <div id="request-headers" class="headers"></div>
+          </section>
+
+      <section class="header-section">
+        <div class="section-heading">
+          <div class="section-title">
+            <h2>Response Headers</h2>
+            <span id="response-count" class="rule-count" hidden></span>
+          </div>
+          <button class="add-button" data-add="responseHeaders" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 5v14M5 12h14"></path>
+            </svg>
+            Add
+          </button>
+          </div>
+          <div id="response-headers" class="headers"></div>
+          </section>
+    </div>
+
+    <footer>
+      <div class="file-actions">
+        <button id="export" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"></path>
+          </svg>
+          Export
+        </button>
+        <label class="import-button">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M12 16V4m0 0 4 4m-4-4L8 8M5 20h14"></path>
+          </svg>
+          Import
+          <input id="import" type="file" accept="application/json">
+        </label>
+      </div>
+      <span id="status" role="status"></span>
+      <span id="version" class="version"></span>
+    </footer>
+  </main>
+
+  <template id="header-row-template">
+    <div class="header-row">
+      <input class="row-enabled" type="checkbox" checked aria-label="Enable header">
+      <select class="row-operation" aria-label="Operation">
+        <option value="set">Set</option>
+        <option value="remove">Remove</option>
+      </select>
+      <input class="row-name" type="text" placeholder="Header name" aria-label="Header name">
+      <input class="row-value" type="text" placeholder="Value" aria-label="Header value">
+      <button class="row-delete danger" type="button" aria-label="Delete header">×</button>
+    </div>
+  </template>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
