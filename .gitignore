@@ -8,3 +8,4 @@ website/dist/
 website/dist
 *.tsbuildinfo
 *.zip
+.DS_Store
