@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { createDefaultState, STORAGE_KEY } from "../lib/state.mjs";
 
-test("popup edits start persistence before the event handler returns", async (context) => {
+test("popup keeps edits in a draft until they are applied", async (context) => {
   const document = createDocument();
   const storageWrites = [];
   const originalSetTimeout = globalThis.setTimeout;
@@ -43,8 +43,27 @@ test("popup edits start persistence before the event handler returns", async (co
   document.elements.urlFilter.value = "||example.com/";
   document.elements.urlFilter.listeners.input();
 
+  assert.equal(storageWrites.length, 0);
+  assert.equal(document.elements.applyButton.disabled, false);
+
+  document.elements.applyButton.listeners.click();
+  await waitFor(() => storageWrites.length === 1);
+
   assert.equal(storageWrites.length, 1);
   assert.equal(storageWrites[0].profiles[0].urlFilter, "||example.com/");
+});
+
+test("popup source relies on the storage event for a single rule rebuild", async () => {
+  const source = await import("node:fs/promises").then(({ readFile }) => readFile(
+    new URL("../popup.js", import.meta.url),
+    "utf8"
+  ));
+  const persistSource = source.slice(
+    source.indexOf("function persistState()"),
+    source.indexOf("function exportState")
+  );
+
+  assert.doesNotMatch(persistSource, /sendMessage/);
 });
 
 function createDocument() {
@@ -68,6 +87,10 @@ function createDocument() {
     renameProfile: new FakeElement(),
     deleteProfileButton: new FakeElement(),
     exportButton: new FakeElement(),
+    exportSensitiveButton: new FakeElement(),
+    applyButton: new FakeElement(),
+    discardButton: new FakeElement(),
+    currentSiteButton: new FakeElement(),
     importInput: new FakeElement()
   };
   const addRequest = new FakeElement({ add: "requestHeaders" });
@@ -91,6 +114,10 @@ function createDocument() {
     ["#add-profile", elements.addProfile],
     ["#rename-profile", elements.renameProfile],
     ["#export", elements.exportButton],
+    ["#export-sensitive", elements.exportSensitiveButton],
+    ["#apply", elements.applyButton],
+    ["#discard", elements.discardButton],
+    ["#use-current-site", elements.currentSiteButton],
     ["#import", elements.importInput]
   ]);
   selectors.set("#header-row-template", {

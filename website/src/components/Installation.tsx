@@ -1,4 +1,5 @@
 import { DownloadButton } from "./DownloadButton.tsx";
+import { ReleaseProvenance } from "./ReleaseProvenance.tsx";
 
 const steps = [
   {
@@ -25,6 +26,7 @@ export function Installation() {
       <div className="installation__copy">
         <h2 id="install-title">Four simple steps.</h2>
         <DownloadButton />
+        <ReleaseProvenance />
       </div>
       <ol className="steps">
         {steps.map((step, index) => (

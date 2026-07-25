@@ -5,6 +5,7 @@ import {
   createDefaultState,
   getStateError,
   normaliseState,
+  redactStateForExport,
   validateState
 } from "../lib/state.mjs";
 
@@ -73,4 +74,18 @@ test("createDefaultState returns independent state", () => {
   first.profiles[0].name = "Changed";
 
   assert.equal(second.profiles[0].name, "Default");
+});
+
+test("redacted exports remove credential header values without mutating settings", () => {
+  const state = createDefaultState();
+  state.profiles[0].requestHeaders = [
+    { enabled: true, operation: "set", name: "Authorization", value: "Bearer secret" },
+    { enabled: true, operation: "set", name: "X-Debug", value: "true" }
+  ];
+
+  const exported = redactStateForExport(state);
+
+  assert.equal(exported.profiles[0].requestHeaders[0].value, "[REDACTED]");
+  assert.equal(exported.profiles[0].requestHeaders[1].value, "true");
+  assert.equal(state.profiles[0].requestHeaders[0].value, "Bearer secret");
 });

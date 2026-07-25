@@ -7,6 +7,7 @@ import {
 import {
   getStateError,
   normaliseState,
+  redactStateForExport,
   STORAGE_KEY,
   validateState
 } from "./lib/state.mjs";
@@ -14,6 +15,9 @@ import {
 const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 
 let state;
+let appliedState;
+let currentTabUrl = "";
+let hasDraftChanges = false;
 let saveRevision = 0;
 
 const elements = {
@@ -25,6 +29,7 @@ const elements = {
   profileSelect: document.querySelector("#profile-select"),
   deleteProfile: document.querySelector("#delete-profile"),
   urlFilter: document.querySelector("#url-filter"),
+  useCurrentSite: document.querySelector("#use-current-site"),
   urlFilterError: document.querySelector("#url-filter-error"),
   requestHeaders: document.querySelector("#request-headers"),
   responseHeaders: document.querySelector("#response-headers"),
@@ -32,7 +37,9 @@ const elements = {
   responseCount: document.querySelector("#response-count"),
   status: document.querySelector("#status"),
   template: document.querySelector("#header-row-template"),
-  version: document.querySelector("#version")
+  version: document.querySelector("#version"),
+  apply: document.querySelector("#apply"),
+  discard: document.querySelector("#discard")
 };
 
 init().catch(showError);
@@ -40,6 +47,8 @@ init().catch(showError);
 async function init() {
   const stored = await chrome.storage.local.get(STORAGE_KEY);
   state = normaliseState(stored[STORAGE_KEY]);
+  appliedState = structuredClone(state);
+  currentTabUrl = await getCurrentTabUrl();
   elements.version.textContent = `v${chrome.runtime.getManifest().version}`;
   bindEvents();
   render();
@@ -50,33 +59,37 @@ function bindEvents() {
   elements.enabled.addEventListener("change", () => {
     state.enabled = elements.enabled.checked;
     renderSummary();
-    persistState();
+    markDraftChanged();
   });
 
   elements.profileSelect.addEventListener("change", () => {
     state.activeProfileId = elements.profileSelect.value;
     render();
-    persistState();
+    markDraftChanged();
   });
 
   elements.urlFilter.addEventListener("input", () => {
     activeProfile().urlFilter = elements.urlFilter.value;
     renderSummary();
-    persistState();
+    markDraftChanged();
   });
 
   document.querySelectorAll("[data-add]").forEach((button) => {
     button.addEventListener("click", () => {
       activeProfile()[button.dataset.add].push({ enabled: true, operation: "set", name: "", value: "" });
       renderHeaderRows(button.dataset.add);
-      persistState();
+      markDraftChanged();
     });
   });
 
   document.querySelector("#add-profile").addEventListener("click", addProfile);
   document.querySelector("#rename-profile").addEventListener("click", renameProfile);
   document.querySelector("#delete-profile").addEventListener("click", deleteProfile);
-  document.querySelector("#export").addEventListener("click", exportState);
+  document.querySelector("#export").addEventListener("click", () => exportState(false));
+  document.querySelector("#export-sensitive").addEventListener("click", () => exportState(true));
+  elements.useCurrentSite.addEventListener("click", useCurrentSite);
+  elements.apply.addEventListener("click", applyDraft);
+  elements.discard.addEventListener("click", discardDraft);
   document.querySelector("#import").addEventListener("change", importState);
 }
 
@@ -91,6 +104,7 @@ function render() {
     return option;
   }));
   elements.urlFilter.value = activeProfile().urlFilter ?? "*";
+  elements.useCurrentSite.hidden = !currentTabUrl;
   renderHeaderRows("requestHeaders");
   renderHeaderRows("responseHeaders");
   renderSummary();
@@ -146,7 +160,7 @@ function renderHeaderRows(key) {
     row.querySelector(".row-delete").addEventListener("click", () => {
       headers.splice(index, 1);
       renderHeaderRows(key);
-      persistState();
+      markDraftChanged();
     });
 
     container.append(row);
@@ -162,20 +176,32 @@ function renderRuleCount(key, headers) {
 }
 
 function renderSummary() {
-  const profile = activeProfile();
-  const filterError = getUrlFilterError(profile.urlFilter);
+  const draftProfile = activeProfile();
+  const appliedProfile = appliedState.profiles.find(
+    (profile) => profile.id === appliedState.activeProfileId
+  ) ?? appliedState.profiles[0];
+  const filterError = getUrlFilterError(draftProfile.urlFilter);
   const configuredRuleCount =
-    countApplicableHeaders(profile.requestHeaders, "requestHeaders") +
-    countApplicableHeaders(profile.responseHeaders, "responseHeaders");
-  const activeRuleCount = state.enabled && !filterError ? configuredRuleCount : 0;
+    countApplicableHeaders(appliedProfile.requestHeaders, "requestHeaders") +
+    countApplicableHeaders(appliedProfile.responseHeaders, "responseHeaders");
+  const appliedFilterError = getUrlFilterError(appliedProfile.urlFilter);
+  const activeRuleCount = appliedState.enabled && !appliedFilterError ? configuredRuleCount : 0;
   const noun = activeRuleCount === 1 ? "rule" : "rules";
 
   elements.activeRuleCount.textContent = `${activeRuleCount} ${noun} active`;
-  elements.activeUrlFilter.textContent = profile.urlFilter?.trim() || "*";
-  elements.globalStatus.textContent = state.enabled && filterError ? "ERROR" : state.enabled ? "ACTIVE" : "PAUSED";
+  elements.activeUrlFilter.textContent = appliedProfile.urlFilter?.trim() || "*";
+  elements.globalStatus.textContent = hasDraftChanges
+    ? "DRAFT"
+    : appliedState.enabled && appliedFilterError
+      ? "ERROR"
+      : appliedState.enabled
+        ? "ACTIVE"
+        : "PAUSED";
   elements.urlFilterError.textContent = filterError;
   elements.urlFilter.setAttribute("aria-invalid", String(Boolean(filterError)));
   elements.shell.classList.toggle("is-live", activeRuleCount > 0);
+  elements.apply.disabled = !hasDraftChanges;
+  elements.discard.disabled = !hasDraftChanges;
 }
 
 function renderHeaderValidation(row, header, key) {
@@ -192,7 +218,7 @@ function updateHeader(key, index, field, value, row) {
   renderHeaderValidation(row, headers[index], key);
   renderRuleCount(key, headers);
   renderSummary();
-  persistState();
+  markDraftChanged();
 }
 
 function activeProfile() {
@@ -206,7 +232,7 @@ function addProfile() {
   state.profiles.push(profile);
   state.activeProfileId = profile.id;
   render();
-  persistState();
+  markDraftChanged();
 }
 
 function renameProfile() {
@@ -215,7 +241,7 @@ function renameProfile() {
   if (!name) return;
   profile.name = name;
   render();
-  persistState();
+  markDraftChanged();
 }
 
 function deleteProfile() {
@@ -224,7 +250,7 @@ function deleteProfile() {
   state.profiles = state.profiles.filter((profile) => profile.id !== state.activeProfileId);
   state.activeProfileId = state.profiles[0].id;
   render();
-  persistState();
+  markDraftChanged();
 }
 
 function persistState() {
@@ -233,9 +259,7 @@ function persistState() {
   showStatus("Saving…");
   const request = chrome.storage.local
     .set({ [STORAGE_KEY]: snapshot })
-    .then(() => chrome.runtime.sendMessage({ type: "REBUILD_RULES" }))
-    .then((result) => {
-      if (!result?.ok) throw new Error(result?.error || "Could not rebuild rules");
+    .then(() => {
       if (revision === saveRevision) showStatus("Saved");
     });
 
@@ -245,12 +269,17 @@ function persistState() {
   return request;
 }
 
-function exportState() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+function exportState(includeSensitiveValues) {
+  if (
+    includeSensitiveValues
+    && !confirm("This backup can contain credentials and private header values. Continue?")
+  ) return;
+  const exportedState = includeSensitiveValues ? state : redactStateForExport(state);
+  const blob = new Blob([JSON.stringify(exportedState, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "header-forge.json";
+  anchor.download = includeSensitiveValues ? "header-forge-backup.json" : "header-forge-redacted.json";
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
@@ -270,10 +299,55 @@ async function importState(event) {
     if (configurationError) throw new Error(configurationError);
     if (!confirm("Import these settings and replace all current profiles?")) return;
     state = normaliseState(imported);
+    hasDraftChanges = true;
     render();
-    await persistState();
+    await applyDraft();
   } catch (error) {
     showError(error);
+  }
+}
+
+function markDraftChanged() {
+  hasDraftChanges = true;
+  renderSummary();
+  showStatus("Changes not applied");
+}
+
+async function applyDraft() {
+  const stateError = getStateError(state);
+  const configurationError = getStateConfigurationError(state);
+  if (stateError || configurationError) {
+    showStatus(`Fix before applying: ${stateError || configurationError}`);
+    return;
+  }
+  await persistState();
+  appliedState = structuredClone(state);
+  hasDraftChanges = false;
+  render();
+}
+
+function discardDraft() {
+  state = structuredClone(appliedState);
+  hasDraftChanges = false;
+  render();
+  showStatus("Draft discarded");
+}
+
+function useCurrentSite() {
+  if (!currentTabUrl) return;
+  const hostname = new URL(currentTabUrl).hostname;
+  activeProfile().urlFilter = `||${hostname}^`;
+  elements.urlFilter.value = activeProfile().urlFilter;
+  renderSummary();
+  markDraftChanged();
+}
+
+async function getCurrentTabUrl() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return /^https?:/.test(tab?.url ?? "") ? tab.url : "";
+  } catch {
+    return "";
   }
 }
 

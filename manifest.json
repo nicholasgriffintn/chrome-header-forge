@@ -5,6 +5,7 @@
   "description": "Locally manage HTTP request and response header rules.",
   "minimum_chrome_version": "120",
   "permissions": [
+    "activeTab",
     "storage",
     "declarativeNetRequest"
   ],

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "cd .. && zip -FS -r website/public/header-forge.zip manifest.json service-worker.js popup.html popup.js popup.css lib icons README.md LICENSE",
+    "prebuild": "cd .. && zip -FS -r website/public/header-forge.zip manifest.json service-worker.js popup.html popup.js popup.css lib icons README.md LICENSE && cd website && node scripts/write-release-metadata.mjs header-forge.zip",
     "build": "tsc -b && vite build",
     "check": "pnpm test && wrangler deploy --dry-run",
     "deploy": "pnpm run check && wrangler deploy",

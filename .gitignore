@@ -2,6 +2,7 @@
 node_modules
 .wrangler
 *.zip
+website/public/release.json
 *.tsbuildinfo
 website/dist/
 website/dist

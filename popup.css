@@ -336,6 +336,13 @@ select {
   font-family: var(--mono);
   font-size: 10px;
 }
+.filter-heading-actions { display: flex; align-items: center; gap: 8px; }
+.filter-heading-actions button {
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 10px;
+}
 
 .filter-input {
   position: relative;
@@ -578,6 +585,22 @@ footer {
   padding: 8px 18px;
   border-top: 1px solid #29292e;
 }
+
+.draft-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-top: 1px solid #29292e;
+  background: rgb(47 128 255 / 5%);
+}
+.draft-actions span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 10px;
+}
+.draft-actions button { min-height: 32px; padding: 0 10px; font-size: 11px; }
+.primary-button:not(:disabled) { border-color: var(--accent); background: var(--accent); color: #fff; }
 
 .file-actions {
   display: flex;
