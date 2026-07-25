@@ -1,12 +1,20 @@
-const STORAGE_KEY = "headerForgeState"; // allow-secret
-const DEFAULT_STATE = {
-  enabled: true,
-  activeProfileId: "default",
-  profiles: [{ id: "default", name: "Default", urlFilter: "*", requestHeaders: [], responseHeaders: [] }]
-};
+import {
+  countApplicableHeaders,
+  getHeaderError,
+  getStateConfigurationError,
+  getUrlFilterError
+} from "./lib/rules.mjs";
+import {
+  getStateError,
+  normaliseState,
+  STORAGE_KEY,
+  validateState
+} from "./lib/state.mjs";
+
+const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 
 let state;
-let saveTimer;
+let saveRevision = 0;
 
 const elements = {
   shell: document.querySelector(".app-shell"),
@@ -17,6 +25,7 @@ const elements = {
   profileSelect: document.querySelector("#profile-select"),
   deleteProfile: document.querySelector("#delete-profile"),
   urlFilter: document.querySelector("#url-filter"),
+  urlFilterError: document.querySelector("#url-filter-error"),
   requestHeaders: document.querySelector("#request-headers"),
   responseHeaders: document.querySelector("#response-headers"),
   requestCount: document.querySelector("#request-count"),
@@ -30,36 +39,37 @@ init().catch(showError);
 
 async function init() {
   const stored = await chrome.storage.local.get(STORAGE_KEY);
-  state = validateState(stored[STORAGE_KEY]) ? stored[STORAGE_KEY] : structuredClone(DEFAULT_STATE);
+  state = normaliseState(stored[STORAGE_KEY]);
   elements.version.textContent = `v${chrome.runtime.getManifest().version}`;
   bindEvents();
   render();
+  if (!validateState(stored[STORAGE_KEY])) await persistState();
 }
 
 function bindEvents() {
   elements.enabled.addEventListener("change", () => {
     state.enabled = elements.enabled.checked;
     renderSummary();
-    queueSave();
+    persistState();
   });
 
   elements.profileSelect.addEventListener("change", () => {
     state.activeProfileId = elements.profileSelect.value;
     render();
-    queueSave();
+    persistState();
   });
 
   elements.urlFilter.addEventListener("input", () => {
     activeProfile().urlFilter = elements.urlFilter.value;
     renderSummary();
-    queueSave();
+    persistState();
   });
 
   document.querySelectorAll("[data-add]").forEach((button) => {
     button.addEventListener("click", () => {
       activeProfile()[button.dataset.add].push({ enabled: true, operation: "set", name: "", value: "" });
       renderHeaderRows(button.dataset.add);
-      queueSave();
+      persistState();
     });
   });
 
@@ -114,30 +124,29 @@ function renderHeaderRows(key) {
     const value = row.querySelector(".row-value");
 
     enabled.checked = header.enabled !== false;
-    operation.value = header.operation === "remove" ? "remove" : "set";
+    operation.value = ["append", "remove"].includes(header.operation) ? header.operation : "set";
     name.value = header.name ?? "";
     value.value = header.value ?? "";
     row.classList.toggle("is-remove", operation.value === "remove");
     row.classList.toggle("is-disabled", !enabled.checked);
     value.disabled = operation.value === "remove";
+    renderHeaderValidation(row, header, key);
 
     enabled.addEventListener("change", () => {
-      updateHeader(key, index, "enabled", enabled.checked);
+      updateHeader(key, index, "enabled", enabled.checked, row);
       row.classList.toggle("is-disabled", !enabled.checked);
-      renderRuleCount(key, headers);
-      renderSummary();
     });
     operation.addEventListener("change", () => {
-      updateHeader(key, index, "operation", operation.value);
+      updateHeader(key, index, "operation", operation.value, row);
       row.classList.toggle("is-remove", operation.value === "remove");
       value.disabled = operation.value === "remove";
     });
-    name.addEventListener("input", () => updateHeader(key, index, "name", name.value));
-    value.addEventListener("input", () => updateHeader(key, index, "value", value.value));
+    name.addEventListener("input", () => updateHeader(key, index, "name", name.value, row));
+    value.addEventListener("input", () => updateHeader(key, index, "value", value.value, row));
     row.querySelector(".row-delete").addEventListener("click", () => {
       headers.splice(index, 1);
       renderHeaderRows(key);
-      queueSave();
+      persistState();
     });
 
     container.append(row);
@@ -149,32 +158,41 @@ function renderHeaderRows(key) {
 function renderRuleCount(key, headers) {
   const count = key === "requestHeaders" ? elements.requestCount : elements.responseCount;
   count.hidden = headers.length === 0;
-  count.textContent = `${countActiveHeaders(headers)}/${headers.length}`;
+  count.textContent = `${countApplicableHeaders(headers, key)}/${headers.length}`;
 }
 
 function renderSummary() {
   const profile = activeProfile();
-  const configuredRuleCount = countActiveHeaders(profile.requestHeaders) + countActiveHeaders(profile.responseHeaders);
-  const activeRuleCount = state.enabled ? configuredRuleCount : 0;
+  const filterError = getUrlFilterError(profile.urlFilter);
+  const configuredRuleCount =
+    countApplicableHeaders(profile.requestHeaders, "requestHeaders") +
+    countApplicableHeaders(profile.responseHeaders, "responseHeaders");
+  const activeRuleCount = state.enabled && !filterError ? configuredRuleCount : 0;
   const noun = activeRuleCount === 1 ? "rule" : "rules";
 
   elements.activeRuleCount.textContent = `${activeRuleCount} ${noun} active`;
   elements.activeUrlFilter.textContent = profile.urlFilter?.trim() || "*";
-  elements.globalStatus.textContent = state.enabled ? "ACTIVE" : "PAUSED";
+  elements.globalStatus.textContent = state.enabled && filterError ? "ERROR" : state.enabled ? "ACTIVE" : "PAUSED";
+  elements.urlFilterError.textContent = filterError;
+  elements.urlFilter.setAttribute("aria-invalid", String(Boolean(filterError)));
   elements.shell.classList.toggle("is-live", activeRuleCount > 0);
 }
 
-function countActiveHeaders(headers) {
-  return headers.filter((header) => header.enabled !== false && header.name?.trim()).length;
+function renderHeaderValidation(row, header, key) {
+  const error = getHeaderError(header, key);
+  row.classList.toggle("is-invalid", Boolean(error));
+  row.querySelector(".row-error").textContent = error;
+  row.querySelector(".row-name").setAttribute("aria-invalid", String(Boolean(error)));
+  row.querySelector(".row-value").setAttribute("aria-invalid", String(Boolean(error)));
 }
 
-function updateHeader(key, index, field, value) {
-  activeProfile()[key][index][field] = value;
-  if (field === "name") {
-    renderRuleCount(key, activeProfile()[key]);
-    renderSummary();
-  }
-  queueSave();
+function updateHeader(key, index, field, value, row) {
+  const headers = activeProfile()[key];
+  headers[index][field] = value;
+  renderHeaderValidation(row, headers[index], key);
+  renderRuleCount(key, headers);
+  renderSummary();
+  persistState();
 }
 
 function activeProfile() {
@@ -188,7 +206,7 @@ function addProfile() {
   state.profiles.push(profile);
   state.activeProfileId = profile.id;
   render();
-  queueSave();
+  persistState();
 }
 
 function renameProfile() {
@@ -197,7 +215,7 @@ function renameProfile() {
   if (!name) return;
   profile.name = name;
   render();
-  queueSave();
+  persistState();
 }
 
 function deleteProfile() {
@@ -206,20 +224,25 @@ function deleteProfile() {
   state.profiles = state.profiles.filter((profile) => profile.id !== state.activeProfileId);
   state.activeProfileId = state.profiles[0].id;
   render();
-  queueSave();
+  persistState();
 }
 
-function queueSave() {
-  clearTimeout(saveTimer);
+function persistState() {
+  const revision = ++saveRevision;
+  const snapshot = structuredClone(state);
   showStatus("Saving…");
-  saveTimer = setTimeout(() => save().catch(showError), 250);
-}
+  const request = chrome.storage.local
+    .set({ [STORAGE_KEY]: snapshot })
+    .then(() => chrome.runtime.sendMessage({ type: "REBUILD_RULES" }))
+    .then((result) => {
+      if (!result?.ok) throw new Error(result?.error || "Could not rebuild rules");
+      if (revision === saveRevision) showStatus("Saved");
+    });
 
-async function save() {
-  await chrome.storage.local.set({ [STORAGE_KEY]: state });
-  const result = await chrome.runtime.sendMessage({ type: "REBUILD_RULES" });
-  if (!result?.ok) throw new Error(result?.error || "Could not rebuild rules");
-  showStatus("Saved");
+  request.catch((error) => {
+    if (revision === saveRevision) showError(error);
+  });
+  return request;
 }
 
 function exportState() {
@@ -229,6 +252,7 @@ function exportState() {
   anchor.href = url;
   anchor.download = "header-forge.json";
   anchor.click();
+  anchor.remove();
   URL.revokeObjectURL(url);
 }
 
@@ -238,30 +262,19 @@ async function importState(event) {
   if (!file) return;
 
   try {
+    if (file.size > MAX_IMPORT_BYTES) throw new Error("Settings file exceeds Chrome's 10 MB storage limit");
     const imported = JSON.parse(await file.text());
-    if (!validateState(imported)) throw new Error("Invalid settings file");
-    state = imported;
+    const stateError = getStateError(imported);
+    if (stateError) throw new Error(stateError);
+    const configurationError = getStateConfigurationError(imported);
+    if (configurationError) throw new Error(configurationError);
+    if (!confirm("Import these settings and replace all current profiles?")) return;
+    state = normaliseState(imported);
     render();
-    await save();
+    await persistState();
   } catch (error) {
     showError(error);
   }
-}
-
-function validateState(value) {
-  return Boolean(
-    value &&
-    typeof value.enabled === "boolean" &&
-    typeof value.activeProfileId === "string" &&
-    Array.isArray(value.profiles) &&
-    value.profiles.length &&
-    value.profiles.every((profile) =>
-      typeof profile.id === "string" &&
-      typeof profile.name === "string" &&
-      Array.isArray(profile.requestHeaders) &&
-      Array.isArray(profile.responseHeaders)
-    )
-  );
 }
 
 function showStatus(message) {
@@ -273,5 +286,5 @@ function showStatus(message) {
 
 function showError(error) {
   console.error(error);
-  showStatus(`Error: ${error.message}`);
+  showStatus(`Error: ${error instanceof Error ? error.message : String(error)}`);
 }

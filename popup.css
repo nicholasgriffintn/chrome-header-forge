@@ -363,6 +363,24 @@ select {
   font-size: 14px;
 }
 
+.field-error,
+.row-error {
+  display: block;
+  min-height: 0;
+  color: var(--danger);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.field-error:not(:empty) {
+  margin-top: 5px;
+}
+
+.filter-input input[aria-invalid="true"],
+.header-row.is-invalid {
+  border-color: color-mix(in srgb, var(--danger) 65%, var(--border));
+}
+
 .workspace-divider {
   height: 1px;
   margin: 14px 0;
@@ -445,6 +463,14 @@ button svg,
   border: 1px solid #35353b;
   border-radius: 13px;
   background: linear-gradient(110deg, #202023, #1c1c1f);
+}
+
+.row-error {
+  grid-column: 2 / -1;
+}
+
+.row-error:empty {
+  display: none;
 }
 
 .header-row select,

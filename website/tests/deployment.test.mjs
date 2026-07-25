@@ -18,4 +18,6 @@ test("the production build contains the page and extension artefacts", async () 
   assert.match(archiveContents, /^manifest[.]json$/m);
   assert.match(archiveContents, /^service-worker[.]js$/m);
   assert.match(archiveContents, /^popup[.]html$/m);
+  assert.match(archiveContents, /^lib[/]rules[.]mjs$/m);
+  assert.match(archiveContents, /^lib[/]state[.]mjs$/m);
 });

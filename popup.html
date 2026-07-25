@@ -55,8 +55,9 @@
             <circle cx="11" cy="11" r="7"></circle>
             <path d="m16.25 16.25 4 4"></path>
           </svg>
-          <input id="url-filter" type="text" placeholder="* or ||example.com/">
+          <input id="url-filter" type="text" placeholder="* or ||example.com/" aria-describedby="url-filter-error">
         </span>
+        <small id="url-filter-error" class="field-error" role="status"></small>
       </label>
 
       <div class="workspace-divider"></div>
@@ -120,15 +121,17 @@
       <input class="row-enabled" type="checkbox" checked aria-label="Enable header">
       <select class="row-operation" aria-label="Operation">
         <option value="set">Set</option>
+        <option value="append">Append</option>
         <option value="remove">Remove</option>
       </select>
       <input class="row-name" type="text" placeholder="Header name" aria-label="Header name">
       <input class="row-value" type="text" placeholder="Value" aria-label="Header value">
       <button class="row-delete danger" type="button" aria-label="Delete header">×</button>
+      <small class="row-error" role="status"></small>
     </div>
   </template>
 
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 
 </html>

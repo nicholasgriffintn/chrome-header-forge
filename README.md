@@ -1,12 +1,12 @@
 # Header Forge
 
-Need to change HTTP headers while testing a website or API? Header Forge lets you set or remove request and response headers locally in Chrome.
+Need to change HTTP headers while testing a website or API? Header Forge lets you set, append or remove request and response headers locally in Chrome.
 
 ![Header Forge extension popup](screenshots/extension.png)
 
 ## Features
 
-- Set or remove request and response headers.
+- Set, append or remove request and response headers.
 - Restrict rules with Chrome URL filters.
 - Keep separate profiles for different sites or tasks.
 - Pause individual rules or all changes at once.
@@ -24,7 +24,7 @@ Need to change HTTP headers while testing a website or API? Header Forge lets yo
    - `|https://example.com/` — URLs beginning with this exact prefix
 
 4. Add a request or response header.
-5. Choose **Set** or **Remove**, then enter the header name and value.
+5. Choose **Set**, **Append** or **Remove**, then enter the header name and value.
 6. Reload the target page.
 
 Changes save automatically. Only the selected profile is active, and the badge shows `ON` when it contains an enabled rule.
@@ -47,7 +47,7 @@ Export your settings before importing if you may need to restore them.
 
 - Chrome protects or specially handles some headers, so not every change is permitted.
 - Service workers, `CacheStorage` and cached responses can hide changes. Disable the cache in Chrome DevTools when testing if necessary.
-- Header Forge supports **Set** and **Remove**, but not **Append**.
+- Chrome only permits **Append** for a defined set of request headers. Header Forge flags unsupported request headers in the popup.
 - Chrome 120 or later is required.
 
 ## Development
@@ -58,6 +58,12 @@ Header Forge has no dependencies or build step. To test a local checkout:
 2. Enable **Developer mode**.
 3. Select **Load unpacked** and choose this repository.
 4. Select the reload icon after making changes.
+
+Run the extension's automated tests with:
+
+```sh
+npm test
+```
 
 The marketing website lives in `website`. Run its checks with:
 

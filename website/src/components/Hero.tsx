@@ -12,8 +12,8 @@ export function Hero() {
         <em> under control.</em>
       </h1>
       <p className="hero__intro reveal reveal--two">
-        Set or remove request and response headers locally in Chrome. Use
-        focused profiles and URL filters without changing your server or
+        Set, append or remove request and response headers locally in Chrome.
+        Use focused profiles and URL filters without changing your server or
         running a proxy.
       </p>
       <div className="hero__actions reveal reveal--three">
