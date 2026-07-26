@@ -47,9 +47,13 @@ Export your settings before importing if you may need to restore them.
 
 ## Privacy
 
-Header Forge stores profiles, URL filters, header names and header values in Chrome's local extension storage. This configuration is not transmitted or shared.
+Header Forge handles profile names, URL filters, header names and header values entered by the user. Header values can contain authentication information and should be treated as sensitive. Settings remain in Chrome's local extension storage until they are changed, reset or the extension is uninstalled.
 
-Chrome applies the rules through its Declarative Net Request API, so Header Forge does not read request or response bodies. Access to all URLs is required so enabled rules can work on any site. The extension has no accounts, analytics, advertising, remote scripts or external API calls.
+Chrome applies enabled rules through its Declarative Net Request API. Configured request header values are sent only to sites matching the user's URL filters; Header Forge does not read request or response bodies. Access to all URLs is required so enabled rules can work on any site.
+
+Settings are not sent to the developer or an analytics service. Backups are created only when requested; full backups can contain credentials, while redacted exports remove recognised sensitive values. The extension has no accounts, analytics, advertising, remote scripts or external API calls.
+
+Information received through Chrome APIs is used only for Header Forge's stated purpose and in accordance with the Chrome Web Store User Data Policy, including the Limited Use requirements. The privacy policy was last updated on 26 July 2026. [Contact the developer](https://nicholasgriffin.dev/contact) with privacy questions.
 
 ## Limitations
 

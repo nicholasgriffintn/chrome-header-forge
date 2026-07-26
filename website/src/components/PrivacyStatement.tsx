@@ -1,6 +1,7 @@
 const privacyPoints = [
-  "No analytics or telemetry",
-  "No accounts or advertising",
+  "No analytics, telemetry, advertising or accounts",
+  "No request or response bodies read by the extension",
+  "Request headers sent only to user-defined matching sites",
   "No remote scripts or external API calls",
 ] as const;
 
@@ -16,11 +17,33 @@ export function PrivacyStatement() {
         </div>
         <div className="privacy__copy">
           <h2 id="privacy-title">Your rules stay on your machine.</h2>
-          <p>
-            Settings live in Chrome&apos;s local extension storage. Chrome
-            applies the rules without exposing request contents to Header
-            Forge.
-          </p>
+          <div className="privacy__policy">
+            <p>
+              Header Forge handles profile names, URL filters, header names
+              and header values entered by you. Header values can contain
+              authentication information, so they should be treated as
+              sensitive.
+            </p>
+            <p>
+              Settings remain in Chrome&apos;s local extension storage until
+              you change them, reset the extension or uninstall it. Chrome
+              applies enabled rules through its Declarative Net Request API:
+              configured request header values are sent only to sites matching
+              your URL filters, while Header Forge does not read request or
+              response bodies.
+            </p>
+            <p>
+              Settings are not sent to the developer or an analytics service.
+              Backups are created only when requested; full backups can contain
+              credentials, while redacted exports remove recognised sensitive
+              values. Information received through Chrome APIs is used only
+              for Header Forge&apos;s stated purpose and in accordance with the
+              Chrome Web Store User Data Policy, including the Limited Use
+              requirements. Last updated 26 July 2026.{" "}
+              <a href="https://nicholasgriffin.dev/contact">Contact the developer</a>
+              {" "}with privacy questions.
+            </p>
+          </div>
         </div>
         <ul>
           {privacyPoints.map((point) => (

@@ -514,6 +514,21 @@ img {
   font-size: clamp(2.5rem, 4vw, 3.8rem);
 }
 
+.privacy__policy {
+  display: grid;
+  gap: 12px;
+}
+
+.privacy__policy p {
+  margin: 0;
+  color: #aeb6c2;
+}
+
+.privacy__policy a {
+  color: var(--green);
+  text-underline-offset: 3px;
+}
+
 .privacy ul {
   display: grid;
   gap: 12px;

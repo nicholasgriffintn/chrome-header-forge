@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "package": "zip -FS -r header-forge.zip manifest.json service-worker.js popup.html popup.js popup.css lib icons README.md LICENSE package.json"
   }
 }
