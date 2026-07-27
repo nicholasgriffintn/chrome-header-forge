@@ -8,6 +8,7 @@ import {
   redactStateForExport,
   validateState
 } from "../lib/state.mjs";
+import { isSensitiveHeaderName } from "../lib/headers.mjs";
 
 test("normaliseState repairs malformed rules without crashing", () => {
   const state = normaliseState({
@@ -88,4 +89,24 @@ test("redacted exports remove credential header values without mutating settings
   assert.equal(exported.profiles[0].requestHeaders[0].value, "[REDACTED]");
   assert.equal(exported.profiles[0].requestHeaders[1].value, "true");
   assert.equal(state.profiles[0].requestHeaders[0].value, "Bearer secret");
+});
+
+test("redacted exports cover common custom token and secret headers", () => {
+  const state = createDefaultState();
+  state.profiles[0].requestHeaders = [
+    { enabled: true, operation: "set", name: "X-Access-Token", value: "secret-1" },
+    { enabled: true, operation: "set", name: "X-Client-Secret", value: "secret-2" },
+    { enabled: true, operation: "set", name: "Session-Token", value: "secret-3" },
+    { enabled: true, operation: "set", name: "X-Client-Version", value: "42" }
+  ];
+
+  const exported = redactStateForExport(state);
+
+  assert.deepEqual(
+    exported.profiles[0].requestHeaders.map((header) => header.value),
+    ["[REDACTED]", "[REDACTED]", "[REDACTED]", "42"]
+  );
+  assert.equal(isSensitiveHeaderName("X-Csrf-Token"), true);
+  assert.equal(isSensitiveHeaderName("X-Secret-Key"), true);
+  assert.equal(isSensitiveHeaderName("X-Client-Version"), false);
 });

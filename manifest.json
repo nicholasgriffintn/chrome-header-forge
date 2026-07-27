@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Header Forge",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Locally manage HTTP request and response header rules.",
   "minimum_chrome_version": "120",
   "permissions": [

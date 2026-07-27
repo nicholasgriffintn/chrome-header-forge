@@ -32,8 +32,8 @@ Only the selected profile is active. Use the main switch to pause all rules.
 
 ## Import and export
 
-- Select **Export redacted** to download `header-forge-redacted.json` with sensitive header values removed.
-- Select **Backup** to download `header-forge-backup.json` with every header value. The file may contain credentials, so store it carefully.
+- Select **Export… → Redacted copy** to download `header-forge-redacted.json` with sensitive header values removed.
+- Select **Export… → Full backup** to download `header-forge-backup.json` with every header value. The file may contain credentials, so store it carefully.
 - Select **Import** to replace the current settings with a valid Header Forge JSON file.
 
 Export your settings before importing if you may need to restore them.

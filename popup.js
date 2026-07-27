@@ -18,7 +18,7 @@ let state;
 let appliedState;
 let currentTabUrl = "";
 let hasDraftChanges = false;
-let saveRevision = 0;
+let applyInProgress = false;
 
 const elements = {
   shell: document.querySelector(".app-shell"),
@@ -39,7 +39,8 @@ const elements = {
   template: document.querySelector("#header-row-template"),
   version: document.querySelector("#version"),
   apply: document.querySelector("#apply"),
-  discard: document.querySelector("#discard")
+  discard: document.querySelector("#discard"),
+  exportMenu: document.querySelector("#export-menu")
 };
 
 init().catch(showError);
@@ -52,7 +53,11 @@ async function init() {
   elements.version.textContent = `v${chrome.runtime.getManifest().version}`;
   bindEvents();
   render();
-  if (!validateState(stored[STORAGE_KEY])) await persistState();
+  if (!validateState(stored[STORAGE_KEY])) {
+    const result = await applyStateThroughWorker(state);
+    state = normaliseState(result.state);
+    appliedState = structuredClone(state);
+  }
 }
 
 function bindEvents() {
@@ -200,8 +205,8 @@ function renderSummary() {
   elements.urlFilterError.textContent = filterError;
   elements.urlFilter.setAttribute("aria-invalid", String(Boolean(filterError)));
   elements.shell.classList.toggle("is-live", activeRuleCount > 0);
-  elements.apply.disabled = !hasDraftChanges;
-  elements.discard.disabled = !hasDraftChanges;
+  elements.apply.disabled = !hasDraftChanges || applyInProgress;
+  elements.discard.disabled = !hasDraftChanges || applyInProgress;
 }
 
 function renderHeaderValidation(row, header, key) {
@@ -253,22 +258,6 @@ function deleteProfile() {
   markDraftChanged();
 }
 
-function persistState() {
-  const revision = ++saveRevision;
-  const snapshot = structuredClone(state);
-  showStatus("Saving…");
-  const request = chrome.storage.local
-    .set({ [STORAGE_KEY]: snapshot })
-    .then(() => {
-      if (revision === saveRevision) showStatus("Saved");
-    });
-
-  request.catch((error) => {
-    if (revision === saveRevision) showError(error);
-  });
-  return request;
-}
-
 function exportState(includeSensitiveValues) {
   if (
     includeSensitiveValues
@@ -283,6 +272,8 @@ function exportState(includeSensitiveValues) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+  elements.exportMenu.open = false;
+  showStatus(includeSensitiveValues ? "Full backup exported" : "Redacted copy exported");
 }
 
 async function importState(event) {
@@ -314,16 +305,40 @@ function markDraftChanged() {
 }
 
 async function applyDraft() {
+  if (applyInProgress) return;
   const stateError = getStateError(state);
   const configurationError = getStateConfigurationError(state);
   if (stateError || configurationError) {
     showStatus(`Fix before applying: ${stateError || configurationError}`);
     return;
   }
-  await persistState();
-  appliedState = structuredClone(state);
-  hasDraftChanges = false;
-  render();
+  applyInProgress = true;
+  renderSummary();
+  showStatus("Applying…");
+  try {
+    const snapshot = structuredClone(state);
+    const result = await applyStateThroughWorker(snapshot);
+    state = normaliseState(result.state ?? snapshot);
+    appliedState = structuredClone(state);
+    hasDraftChanges = false;
+    showStatus("Applied");
+  } catch (error) {
+    showError(error);
+  } finally {
+    applyInProgress = false;
+    render();
+  }
+}
+
+async function applyStateThroughWorker(snapshot) {
+  const response = await chrome.runtime.sendMessage({
+    type: "APPLY_STATE",
+    state: snapshot
+  });
+  if (!response?.ok) {
+    throw new Error(response?.error || "Chrome did not apply the header rules");
+  }
+  return response;
 }
 
 function discardDraft() {

@@ -35,7 +35,8 @@ body {
 button,
 select,
 input,
-.import-button {
+.import-button,
+.export-button {
   font: inherit;
 }
 
@@ -46,7 +47,8 @@ input {
 }
 
 button,
-.import-button {
+.import-button,
+.export-button {
   min-height: 36px;
   border: 1px solid var(--border-strong);
   border-radius: 11px;
@@ -57,21 +59,24 @@ button,
 }
 
 button:hover,
-.import-button:hover {
+.import-button:hover,
+.export-button:hover {
   border-color: #5a5a64;
   background: var(--surface-hover);
   color: var(--text);
 }
 
 button:active,
-.import-button:active {
+.import-button:active,
+.export-button:active {
   transform: translateY(1px);
 }
 
 button:focus-visible,
 select:focus-visible,
 input:focus-visible,
-.import-button:focus-within {
+.import-button:focus-within,
+.export-button:focus-visible {
   outline: 2px solid var(--accent-bright);
   outline-offset: 2px;
 }
@@ -431,7 +436,8 @@ h2 {
 
 .add-button,
 .file-actions button,
-.import-button {
+.import-button,
+.export-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -445,7 +451,8 @@ h2 {
 }
 
 button svg,
-.import-button svg {
+.import-button svg,
+.export-button svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -578,7 +585,8 @@ button svg,
 }
 
 footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   min-height: 52px;
@@ -594,33 +602,147 @@ footer {
   border-top: 1px solid #29292e;
   background: rgb(47 128 255 / 5%);
 }
-.draft-actions span {
-  margin-right: auto;
+
+.draft-message {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.draft-message > span {
+  display: block;
+  overflow: hidden;
   color: var(--muted);
   font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.draft-actions button { min-height: 32px; padding: 0 10px; font-size: 11px; }
+
+.draft-message #status {
+  position: absolute;
+  inset: 0;
+  color: var(--text-soft);
+  font-family: var(--mono);
+}
+
+.draft-message #status:empty {
+  display: none;
+}
+
+.draft-message:has(#status:not(:empty)) .draft-guidance {
+  visibility: hidden;
+}
+
+.draft-actions button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+#discard {
+  min-width: 62px;
+}
+
+#apply {
+  min-width: 100px;
+}
+
 .primary-button:not(:disabled) { border-color: var(--accent); background: var(--accent); color: #fff; }
 
 .file-actions {
   display: flex;
-  gap: 10px;
-}
-
-.file-actions button,
-.import-button {
-  min-height: 36px;
-}
-
-footer #status {
+  align-items: center;
+  gap: 8px;
   min-width: 0;
-  margin-left: auto;
-  overflow: hidden;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 12px;
-  text-overflow: ellipsis;
+}
+
+.import-button,
+.export-button {
+  width: auto;
+  min-width: 112px;
+  min-height: 34px;
+  padding-inline: 11px;
+  gap: 7px;
+  font-size: 11px;
   white-space: nowrap;
+}
+
+.export-menu {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.export-button {
+  list-style: none;
+  user-select: none;
+}
+
+.export-button::-webkit-details-marker {
+  display: none;
+}
+
+.export-button .menu-chevron {
+  width: 11px;
+  height: 11px;
+  margin-left: 0;
+  color: var(--muted);
+  transition: transform 150ms ease;
+}
+
+.import-button > svg,
+.export-button > svg:first-child {
+  width: 16px;
+  height: 16px;
+}
+
+.export-menu[open] .menu-chevron {
+  transform: rotate(180deg);
+}
+
+.export-options {
+  position: absolute;
+  z-index: 10;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  gap: 3px;
+  width: 270px;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 13px;
+  background: #202024;
+  box-shadow: 0 18px 45px rgb(0 0 0 / 45%);
+}
+
+.export-options button {
+  display: grid;
+  gap: 2px;
+  min-height: 0;
+  padding: 9px 10px;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+  white-space: normal;
+}
+
+.export-options button:hover,
+.export-options button:focus-visible {
+  border-color: transparent;
+  background: var(--surface-hover);
+}
+
+.export-options strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.export-options small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
 }
 
 .version {

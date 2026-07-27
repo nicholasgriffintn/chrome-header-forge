@@ -99,22 +99,37 @@
     </div>
 
     <div class="draft-actions">
-      <span>Edits stay as a draft until the full profile is valid.</span>
+      <div class="draft-message">
+        <span class="draft-guidance">Edits stay as a draft until the full profile is valid.</span>
+        <span id="status" role="status"></span>
+      </div>
       <button id="discard" type="button" disabled>Discard</button>
       <button id="apply" class="primary-button" type="button" disabled>Apply changes</button>
     </div>
 
     <footer>
       <div class="file-actions">
-        <button id="export" type="button">
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"></path>
-          </svg>
-          Export redacted
-        </button>
-        <button id="export-sensitive" type="button">
-          Backup…
-        </button>
+        <details id="export-menu" class="export-menu">
+          <summary class="export-button">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"></path>
+            </svg>
+            Export…
+            <svg class="menu-chevron" aria-hidden="true" viewBox="0 0 16 16">
+              <path d="m4 6 4 4 4-4"></path>
+            </svg>
+          </summary>
+          <div class="export-options">
+            <button id="export" type="button">
+              <strong>Redacted copy</strong>
+              <small>Hides tokens and secrets. Safer to share.</small>
+            </button>
+            <button id="export-sensitive" type="button">
+              <strong>Full backup</strong>
+              <small>Keeps every value for a complete restore.</small>
+            </button>
+          </div>
+        </details>
         <label class="import-button">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M12 16V4m0 0 4 4m-4-4L8 8M5 20h14"></path>
@@ -123,7 +138,6 @@
           <input id="import" type="file" accept="application/json">
         </label>
       </div>
-      <span id="status" role="status"></span>
       <span id="version" class="version"></span>
     </footer>
   </main>

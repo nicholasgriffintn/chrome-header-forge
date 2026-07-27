@@ -6,6 +6,7 @@ import { createDefaultState, STORAGE_KEY } from "../lib/state.mjs";
 test("popup keeps edits in a draft until they are applied", async (context) => {
   const document = createDocument();
   const storageWrites = [];
+  const applyMessages = [];
   const originalSetTimeout = globalThis.setTimeout;
   globalThis.setTimeout = (callback) => {
     queueMicrotask(callback);
@@ -20,8 +21,9 @@ test("popup keeps edits in a draft until they are applied", async (context) => {
       getManifest() {
         return { version: "1.0.0" };
       },
-      async sendMessage() {
-        return { ok: true };
+      async sendMessage(message) {
+        applyMessages.push(structuredClone(message));
+        return { ok: true, state: structuredClone(message.state) };
       }
     },
     storage: {
@@ -47,23 +49,27 @@ test("popup keeps edits in a draft until they are applied", async (context) => {
   assert.equal(document.elements.applyButton.disabled, false);
 
   document.elements.applyButton.listeners.click();
-  await waitFor(() => storageWrites.length === 1);
+  await waitFor(() => applyMessages.length === 1);
 
-  assert.equal(storageWrites.length, 1);
-  assert.equal(storageWrites[0].profiles[0].urlFilter, "||example.com/");
+  assert.equal(storageWrites.length, 0);
+  assert.equal(applyMessages[0].type, "APPLY_STATE");
+  assert.equal(applyMessages[0].state.profiles[0].urlFilter, "||example.com/");
+  assert.equal(document.elements.applyButton.disabled, true);
 });
 
-test("popup source relies on the storage event for a single rule rebuild", async () => {
+test("popup applies drafts through the worker acknowledgement seam", async () => {
   const source = await import("node:fs/promises").then(({ readFile }) => readFile(
     new URL("../popup.js", import.meta.url),
     "utf8"
   ));
-  const persistSource = source.slice(
-    source.indexOf("function persistState()"),
-    source.indexOf("function exportState")
+  const applySource = source.slice(
+    source.indexOf("async function applyDraft()"),
+    source.indexOf("function discardDraft")
   );
 
-  assert.doesNotMatch(persistSource, /sendMessage/);
+  assert.match(applySource, /applyStateThroughWorker/);
+  assert.match(source, /type:\s*"APPLY_STATE"/);
+  assert.doesNotMatch(applySource, /chrome[.]storage[.]local[.]set/);
 });
 
 function createDocument() {
@@ -88,6 +94,7 @@ function createDocument() {
     deleteProfileButton: new FakeElement(),
     exportButton: new FakeElement(),
     exportSensitiveButton: new FakeElement(),
+    exportMenu: new FakeElement(),
     applyButton: new FakeElement(),
     discardButton: new FakeElement(),
     currentSiteButton: new FakeElement(),
@@ -115,6 +122,7 @@ function createDocument() {
     ["#rename-profile", elements.renameProfile],
     ["#export", elements.exportButton],
     ["#export-sensitive", elements.exportSensitiveButton],
+    ["#export-menu", elements.exportMenu],
     ["#apply", elements.applyButton],
     ["#discard", elements.discardButton],
     ["#use-current-site", elements.currentSiteButton],
