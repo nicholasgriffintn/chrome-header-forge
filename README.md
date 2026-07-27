@@ -38,12 +38,11 @@ Only the selected profile is active. Use the main switch to pause all rules.
 
 Export your settings before importing if you may need to restore them.
 
-## Install from source
+## Install
 
-1. Open `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Select **Load unpacked** and choose this repository.
-4. Reload an already-open target page after the first installation.
+[Install Header Forge from the Chrome Web Store](https://chromewebstore.google.com/detail/header-forge/hjniljmdaadpkbllgfilpiolmbgihbon).
+
+For local development, open `chrome://extensions`, enable **Developer mode**, then select **Load unpacked** and choose this repository. Reload an already-open target page after the first installation.
 
 ## Privacy
 
